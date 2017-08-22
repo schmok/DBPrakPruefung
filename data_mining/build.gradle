@@ -1,0 +1,50 @@
+group 'de.dbprak.dm'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+group 'de.dbprak.dm'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    compile 'org.apache.spark:spark-core_2.10:2.1.1'
+    compile 'org.apache.spark:spark-mllib_2.10:2.1.1'
+    compile group: 'org.mongodb', name: 'mongo-java-driver', version: '3.4.2'
+    compile files('lib/ojdbc7.jar')
+}
+
+task(runApp, dependsOn: 'classes', type: JavaExec) {
+    main = 'de.dbprak.dm.FrequentPatternMiningDBPrak'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+jar {
+    zip64 true
+
+    manifest {
+        attributes "Main-Class": "de.dbprak.dm.FrequentPatternMiningDBPrak"
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
