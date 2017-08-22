@@ -1,17 +1,20 @@
 package de.dbprak.dm;
 
-import com.mongodb.DBRef;
 import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
 /**
- * Created by viktorspadi on 12.07.17.
+ * @author vspadi
  */
 public class MongoReceiptCollector implements IFPCollector{
     private MongoDatabase db;
@@ -40,9 +43,9 @@ public class MongoReceiptCollector implements IFPCollector{
             long count = receiptsCollection.count();
             List<String>[] receipts = new List[(int) count];
             final int[] i = {0};
-            documents.forEach((Consumer<? super Document>) document -> {
+            documents.forEach((Consumer<? super Document>) (Document document) -> {
                 if(document.containsKey("products")) {
-                    receipts[i[0]] = new ArrayList<String>((Collection<? extends String>) ((List)document.get("products"))
+                    receipts[i[0]] = new ArrayList<String>((Collection<String>) ((List)document.get("products"))
                             .stream()
                             .map(o -> {
                                 return ((Document)o).get("product_name").toString();

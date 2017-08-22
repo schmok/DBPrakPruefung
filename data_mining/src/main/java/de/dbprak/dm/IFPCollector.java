@@ -3,7 +3,7 @@ package de.dbprak.dm;
 import java.util.List;
 
 /**
- * Created by viktorspadi on 12.07.17.
+ * @author fdecker
  */
 public interface IFPCollector {
     List<List<String>> getData();
