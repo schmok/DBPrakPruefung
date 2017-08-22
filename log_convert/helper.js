@@ -90,7 +90,7 @@ class ConsolePrinter {
 }
 
 //
-var bufferSize = 2 << 22;
+var bufferSize = 2 << 22; // 2 << 22
 
 let getCSVPath = (tableName) => resolveTablePath(tableName, false);
 let getJSONPath = (tableName) => path.resolve(__dirname, "../data/json/"+tableName+".json");
@@ -102,42 +102,55 @@ createLineStream = (filePath, batchSize, callback) => {
     var buffer = Buffer.alloc(bufferSize);
     var stats = fs.fstatSync(fd);
     var end = stats.size;
-    var total = 0;
+    var abbort = false;
+    var total = end;
     var remainStr = "";
     var batch = [];
 
-    while(total != end) {
-        var bytesToRead = bufferSize < end-total?bufferSize:end-total;
-        var read = fs.readSync(fd, buffer, 0, bytesToRead, total);
-        total += read;
+    while(total != 0 && !abbort) {
+        var bytesToRead = bufferSize > total?total:bufferSize;
+        var read = fs.readSync(fd, buffer, 0, bytesToRead, total - bytesToRead);
+        total -= read;
         var tmp = buffer.toString("utf8").substr(0, read);
 
-        var lastBraceIndex = tmp.lastIndexOf("\n");
-        var lines = (remainStr+tmp.substr(0, lastBraceIndex)).split("\n");
+        var lastBraceIndex = tmp.indexOf("\n");
+        var lines = (tmp.substr(lastBraceIndex, tmp.length)+remainStr).split("\n").filter(l => l.length > 0);
+
+        if(total === 0) {
+            lines = [tmp.substr(0, lastBraceIndex)].concat(lines);
+        }
 
         if(batchSize > 0) {
             while(lines.length > 0) {
                 if(batch.length < batchSize) {
-                    batch = batch.concat(lines.splice(0, batchSize - batch.length));
+                    batch = lines.splice(0, batchSize - batch.length).concat(batch);
                 }
 
                 if(batch.length === batchSize) {
-                    callback(batch, total / end);
+                    var r = callback(batch.reverse(), total / end);
+                    if(r === true) {
+                        abbort = true;
+                    }
                     batch = [];
                 }
             }
         } else {
-            lines.forEach(line => {
-                if(line.trim().length > 0)
-                    callback(line, total / end);
+            lines.reverse().forEach(line => {
+                if(line.trim().length > 0) {
+                    var r = callback(line, total / end);
+                    if(r === true) {
+                        abbort = true;
+                    }
+                }
+                   
             });
         }
 
-        remainStr = tmp.substr(lastBraceIndex, tmp.length);
+        remainStr = tmp.substr(0, lastBraceIndex);
     }
 
     if(batch.length > 0) {
-        callback(batch, total / end);
+        callback(batch.reverse(), total / end);
     }
 
     fs.closeSync(fd);
