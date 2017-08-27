@@ -90,7 +90,7 @@ class ConsolePrinter {
 }
 
 //
-var bufferSize = 2 << 22; // 2 << 22
+var bufferSize = 4096; // 2 << 22
 
 let getCSVPath = (tableName) => resolveTablePath(tableName, false);
 let getJSONPath = (tableName) => path.resolve(__dirname, "../data/json/"+tableName+".json");
@@ -135,7 +135,7 @@ createLineStream = (filePath, batchSize, callback) => {
                 }
             }
         } else {
-            lines.reverse().forEach(line => {
+            lines.forEach(line => {
                 if(line.trim().length > 0) {
                     var r = callback(line, total / end);
                     if(r === true) {

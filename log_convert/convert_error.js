@@ -3,38 +3,86 @@ var printer = helper.consolePrinter;
 var createLineStream = helper.createLineStream;
 var fs = require("fs");
 var path = require("path");
+var mongo = require("mongodb");
+var ObjectID = mongo.ObjectID;
+var client = mongo.MongoClient;
 
-var name = "is-access_log";
+var url = "mongodb://localhost/pruefung";
 
-var filePath = path.resolve(__dirname, "../logs/"+name);
-var regex = /^(\S+) (\S+) (\S+) \[([^:]+):(\d+:\d+:\d+) ([^\]]+)\] "(\S+ )?(.+?)?( \S+)?" (\S+) (\S+)$/;
-var fileProgress = printer.createProgressBar(name+"progress", "Reading "+name);
-var fd = fs.openSync(path.resolve(__dirname, "../logs/"+name+".csv"), "w");
-var cnt = 0;
-createLineStream(filePath, 1000, (lines, progress) => {
-    lines.some(l => {
-        if(regex.test(l)) {
-            let c = l.split(regex).slice(1, 12);
-            c = c.slice(0,3).concat([new Date(c.slice(3, 6).join(" ")).getTime()+""]).concat(c.slice(6,11));
-            let buffer = c.map(s => s!=="-"&&s!==undefined?`"${s.trim()}"`:"").join(",")+"\n";
-            fs.writeSync(fd, buffer);
-            cnt++;
-            if(cnt  > 10) {
-                return true;
-            }
-        } else {
-            var line = l.split(regex);
-            var t = regex.test(l);
-            var c = 123;
-        }
-    });
+client.connect(url, (err, db) => {
+    if(err) throw err;
 
-    if(cnt  > 10) {
-        return true;
-    }
-
-    fileProgress.setProgress(1-progress);
-    if(progress === 1) {
-        //fs.closeSync(fd);
-    }
+    convertAndWriteLog("error_log", "access_log", false, db);
+    //convertAndWriteLog("is-error_log", "is-access_log", false, db);
 });
+
+function convertAndWriteLog(name, target, writeCSV, db) {
+    var filePath = path.resolve(__dirname, "../logs/"+name);
+    var regex = /^\[([^\]]+)\] \[([^\]]+)\] (?:\[([^\]]+)\] )?(.*)$/;
+    var fileProgress = printer.createProgressBar(name+"progress", "Reading "+name);
+    var fd = fs.openSync(path.resolve(__dirname, "../logs/"+name+".csv"), "w");
+    var lastDate;
+    var abbort = false;
+    createLineStream(filePath, 1000, (lines, progress) => {
+        var bulk = db.collection('servers').initializeUnorderedBulkOp();
+        lines.some(l => {
+            if(regex.test(l)) {
+                let c = l.split(regex).slice(1, 5);
+                let d = new Date(c[0]);
+                if(lastDate === undefined) {
+                    lastDate = new Date(d);
+                    lastDate.setFullYear(lastDate.getFullYear() -1);
+                }
+
+                if(lastDate <= d) {
+                    c = [d.getTime()+""].concat(c.slice(1,3)).concat(c[3].split(": "));
+                    if(c[2] === undefined || c[2].indexOf("client") === -1) {
+                        if(c[2] === undefined) {
+
+                        } else
+                            console.log(c[2]);
+                    } else {
+                        c[2] = c[2].replace("client ", "");
+                    }
+
+                    c = c.map(s => s!=="-"&&s!==undefined?s.trim():undefined);
+                    
+                    var data = {
+                                "error_time": mongo.Long.fromNumber(d.getTime()),
+                                "type": c[1],
+                                "hostname": c[2],
+                                "cause": c[3],
+                                "message": c[4]
+                    };
+                    bulk.find( { server_name: target } ).upsert().updateOne({
+                        $push: {
+                            [`errors.${[d.getYear()+1900, d.getMonth(), d.getDay()].join(".")}`] : 
+                                Object.keys(data)
+                                    .filter((k) => data[k] !== undefined)
+                                    .reduce((p, c) => {
+                                        p[c] = data[c];
+                                        return p;
+                                    }, {})
+                        }
+                    });
+
+                    if(writeCSV) {
+                        let buffer = c.map(s =>`"${s.trim()}"`).join(",")+`,"${name}"\n`;
+                        fs.writeSync(fd, buffer);
+                    }
+                } else {
+                    abbort = true;
+                    return true;
+                }
+            } else {
+                // errors here 
+            }
+        });
+        bulk.execute(() => {
+            
+        });
+
+        fileProgress.setProgress(1-progress);
+        return abbort;
+    });
+}
