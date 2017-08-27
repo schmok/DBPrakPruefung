@@ -1,0 +1,1 @@
+sqlldr CONTROL=access_log.ctl   skip=1   
