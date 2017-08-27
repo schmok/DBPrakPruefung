@@ -1,5 +1,5 @@
 load data 
-infile 'access_log.csv' "str '\n'"
+infile 'is-access_log.csv' "str '\n'"
 append
 into table PRUEFUNG.ACCESS_LOG
 fields terminated by ','

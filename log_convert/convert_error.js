@@ -12,9 +12,17 @@ var url = "mongodb://localhost/pruefung";
 client.connect(url, (err, db) => {
     if(err) throw err;
 
-    convertAndWriteLog("error_log", "access_log", false, db);
+    createDocument("error_log", "access_log", db);
+    
     //convertAndWriteLog("is-error_log", "is-access_log", false, db);
 });
+
+function createDocument(documentName,targetName, db) {
+    // just make shure, that the document exists
+    db.collection("servers").updateOne( { server_name: targetName }, { $set: { server_name: targetName } }, { upsert:true }, () => {
+        convertAndWriteLog("error_log", "access_log", false, db);
+    });
+}
 
 function convertAndWriteLog(name, target, writeCSV, db) {
     var filePath = path.resolve(__dirname, "../logs/"+name);
@@ -23,8 +31,10 @@ function convertAndWriteLog(name, target, writeCSV, db) {
     var fd = fs.openSync(path.resolve(__dirname, "../logs/"+name+".csv"), "w");
     var lastDate;
     var abbort = false;
+
+
     createLineStream(filePath, 1000, (lines, progress) => {
-        var bulk = db.collection('servers').initializeUnorderedBulkOp();
+        var bulk = db.collection('servers_data').initializeUnorderedBulkOp();
         lines.some(l => {
             if(regex.test(l)) {
                 let c = l.split(regex).slice(1, 5);
@@ -33,7 +43,8 @@ function convertAndWriteLog(name, target, writeCSV, db) {
                     lastDate = new Date(d);
                     lastDate.setFullYear(lastDate.getFullYear() -1);
                 }
-
+                
+                var dateKey = [d.getYear()+1900, d.getMonth(), d.getDate()].join(".");
                 if(lastDate <= d) {
                     c = [d.getTime()+""].concat(c.slice(1,3)).concat(c[3].split(": "));
                     if(c[2] === undefined || c[2].indexOf("client") === -1) {
@@ -54,9 +65,9 @@ function convertAndWriteLog(name, target, writeCSV, db) {
                                 "cause": c[3],
                                 "message": c[4]
                     };
-                    bulk.find( { server_name: target } ).upsert().updateOne({
+                    bulk.find( { server_name: target, date: dateKey } ).upsert().updateOne({
                         $push: {
-                            [`errors.${[d.getYear()+1900, d.getMonth(), d.getDay()].join(".")}`] : 
+                            [`errors`] : 
                                 Object.keys(data)
                                     .filter((k) => data[k] !== undefined)
                                     .reduce((p, c) => {
@@ -67,7 +78,7 @@ function convertAndWriteLog(name, target, writeCSV, db) {
                     });
 
                     if(writeCSV) {
-                        let buffer = c.map(s =>`"${s.trim()}"`).join(",")+`,"${name}"\n`;
+                        let buffer = c.map(s =>`"${s.trim()}"`).join(",")+`,"${name==="access-log"?2:1}"\n`;
                         fs.writeSync(fd, buffer);
                     }
                 } else {

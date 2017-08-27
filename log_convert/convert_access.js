@@ -75,7 +75,7 @@ function convertAndWriteLog(name, writeCSV, db) {
                         dateKeys[dateKey] = id;
                     }
 
-                    /*
+                    
                     bulk.find( { _id: dateKeys[dateKey] } ).upsert().updateOne({
                         $set: { server_name: name, date: dateKey },
                         $push: {
@@ -88,11 +88,11 @@ function convertAndWriteLog(name, writeCSV, db) {
                                     }, {})
                         }
                     });
-                    */
+                    
 
-                    if(true) {
+                    if(writeCSV) {
                         c = c.slice(0,3).concat([d.getTime()+""]).concat(c.slice(6,13));
-                        let buffer = c.map((s) => `"${s.replace(/"/g, "\\\"")}"`).join(",")+`,"1"\n`;
+                        let buffer = c.map((s) => `"${s.replace(/"/g, "\\\"")}"`).join(",")+`,"${name==="access-log"?2:1}"\n`;
                         fs.writeSync(fd, buffer);
                     }
                 } else {
@@ -103,11 +103,11 @@ function convertAndWriteLog(name, writeCSV, db) {
                 // errors here 
             }
         });
-        /*
+        
         bulk.execute(() => {
             
         });
-        */
+        
 
         fileProgress.setProgress(1-progress);
         return abbort;
