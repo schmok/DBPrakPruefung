@@ -1,4 +1,4 @@
-package de.dbprak.dm;
+package de.dbprak.dm.fp;
 
 import java.util.List;
 

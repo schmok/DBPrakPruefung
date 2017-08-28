@@ -4,6 +4,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import de.dbprak.dm.fp.IFPCollector;
 import org.bson.Document;
 
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 /**
  * @author vspadi
  */
-public class MongoReceiptCollector implements IFPCollector{
+public class MongoReceiptCollector implements IFPCollector {
     private MongoDatabase db;
 
     public MongoReceiptCollector() {

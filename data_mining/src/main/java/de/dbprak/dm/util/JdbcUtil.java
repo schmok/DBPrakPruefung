@@ -16,14 +16,14 @@ import java.util.stream.StreamSupport;
  * Source: https://stackoverflow.com/a/32232173
  */
 public class JdbcUtil {
-    public static <R> Stream<R> getResultsAsStream(Connection connection, QueryResultWrapper<R> queryResultWrapper) throws SQLException {
+    public static <R> Stream<R> getResultsAsStream(Connection connection, QueryResultWrapper<R> queryResultWrapper, int fetchSize) throws SQLException {
         UncheckedCloseable close = null;
         try {
             close = UncheckedCloseable.wrap(connection);
             PreparedStatement pSt = connection.prepareStatement(queryResultWrapper.getSql());
             close = close.nest(pSt);
             connection.setAutoCommit(false);
-            pSt.setFetchSize(5000);
+            pSt.setFetchSize(fetchSize);
             ResultSet resultSet = pSt.executeQuery();
             close = close.nest(resultSet);
             return StreamSupport.stream(new Spliterators.AbstractSpliterator<R>(Long.MAX_VALUE, Spliterator.ORDERED) {
